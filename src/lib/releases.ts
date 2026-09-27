@@ -2,7 +2,16 @@ import { prisma } from "@/lib/prisma";
 import { CreateReleaseInput, UpdateReleaseInput } from "@/lib/validation";
 
 export async function listReleases() {
-  return prisma.release.findMany({ orderBy: [{ date: "desc" }, { createdAt: "desc" }] });
+  return prisma.release.findMany({
+    select: {
+      id: true,
+      name: true,
+      date: true,
+      completedSteps: true,
+      createdAt: true,
+    },
+    orderBy: [{ date: "desc" }, { createdAt: "desc" }],
+  });
 }
 
 export async function createRelease(input: CreateReleaseInput) {

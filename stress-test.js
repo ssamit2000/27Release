@@ -7,7 +7,7 @@ export const options = {
 };
 
 export default function () {
-  const res = http.get('https://27-release.vercel.app/');
+  const res = http.get('https://27-release.vercel.app/api/releases');
 
   check(res, {
     'status is 200': (r) => r.status === 200,
