@@ -149,25 +149,43 @@ The `Release` model has an index on `date` in descending order to support effici
 
 ## Stress Testing
 
-A k6 load test was performed against the deployed Vercel application using the `GET /api/releases` endpoint.
+Load testing was performed against the production API endpoint:
 
-Each test ran for 30 seconds.
+`GET /api/releases`
 
-| Concurrent VUs | Requests | Failed | Avg Latency | p95 Latency |
-| -------------: | -------: | -----: | ----------: | ----------: |
-|             50 |      419 |     0% |       1.20s |       1.67s |
-|            100 |      785 |  0.12% |       2.14s |       6.52s |
-|            200 |      904 |  6.08% |       2.11s |       4.77s |
+The test used k6 with 30-second runs and a 1-second pause between iterations. VUs represent concurrent simulated clients, not exact human users.
 
-### Stress Test Conclusion
+### Initial implementation
 
-The API handled 50 concurrent virtual users with 0% request failures during the 30-second test.
+| Concurrent VUs | Requests | Failed | Failure Rate | p95 Latency |
+| -------------: | -------: | -----: | -----------: | ----------: |
+|             50 |      771 |      0 |        0.00% |       1.56s |
+|            100 |    1,036 |      0 |        0.00% |       2.43s |
+|            200 |    1,069 |     32 |        2.99% |       3.66s |
 
-At 100 concurrent virtual users, the failure rate was 0.12% and latency increased.
+The initial implementation remained fully successful at 100 VUs. At 200 VUs, requests began to fail, establishing an observed degradation/breaking point under this test configuration.
 
-At 200 concurrent virtual users, the failure rate increased to 6.08%, with connection-related errors observed during the test.
+### Optimization
 
-These results indicate that performance degradation became visible as concurrency increased. The tested workload was fully successful at 50 concurrent virtual users, while higher concurrency produced measurable failures.
+The release-list query was optimized to fetch only the fields required by the dashboard instead of returning the complete Release record.
+
+This reduced unnecessary database result payload and application-level data handling.
+
+### Optimized implementation
+
+| Concurrent VUs | Requests | Failed | Failure Rate | p95 Latency |
+| -------------: | -------: | -----: | -----------: | ----------: |
+|            200 |    1,124 |     18 |        1.60% |       4.64s |
+
+At 200 VUs, the observed request failure rate decreased from 2.99% to 1.60%, while throughput increased from 17.82 req/s to 18.73 req/s.
+
+The latency result was variable: p95 increased from 3.66s to 4.64s in this run. Therefore, the optimization is reported as an observed improvement in failure rate and throughput rather than a universal latency improvement.
+
+### Conclusion
+
+The initial load test showed that the application handled 50 and 100 concurrent simulated clients without failed requests, while failures appeared at 200 VUs.
+
+After optimizing the release-list query, the same 200-VU test showed a lower observed failure rate and slightly higher throughput. The experiment demonstrates the effect of reducing unnecessary database result data while also showing that serverless load-test performance can vary across runs.
 
 > Note: k6 virtual users represent concurrent simulated clients and should not be interpreted as an exact count of unique human users.
 
